@@ -19,7 +19,7 @@ dataset$salary <-as.numeric(dataset$salary)
 
 
 #### Prepare constraint matrix of zeros #####
-A <- matrix(0, nrow = 8, ncol = nrow(dataset))
+A <- matrix(0, nrow = 9, ncol = nrow(dataset))  # changed nrow to 9 to accomodate fpts for multi solution
 
 #Designate the positions that are equivalent to each other when generating the optimal lineup
 #There are 7 distinct positions and 1 constraint in which salary is < 50,000
@@ -103,28 +103,41 @@ for (i in 1:nrow(dataset)){
 i<-1
 
 A[8, ] <- dataset$salary                # salary <= 50000
+A[9, ] <- dataset$fpts                  # Max fantasy pts for multiple solutions
 
 # Prepare input for LP solver
 objective.in <- dataset$fpts
 const.mat <- A
 const.dir <- c("==", "==", "==", "==","==","==","==", "<=")
-const.rhs <- c(1, 1, 1, 1,1,2,3, 50000)
+
+
 
 # Generate optimal lineup with lp solve
 require(lpSolve)
-sol <- lp(direction = "max", objective.in, # maximize objective function
+
+x <- 20000
+vals <- c()
+for(i in 1:5){
+  const.rhs <- c(1, 1, 1, 1,1,2,3, 50000, x)
+  sol <- lp(direction = "max", objective.in, # maximize objective function
           const.mat, const.dir, const.rhs,   # constraints
           all.bin = TRUE)                    # use binary variables only
-
+  vals <- c(vals, sol$objval)
+  x <- sol$objval - 0.0001
 ### View the solution
 inds <- which(sol$solution == 1)
 sum(dataset$salary[inds])
-
-
 solution<-dataset[inds, ]
-
 #Print players in optimal lineup
-solution
+solution <- solution %>%
+  arrange(Pos)
+print("---- Start ----")
+print(i)
+print(solution)
+print(sum(solution$fpts))
+print(sum(solution$salary))
+print("---- END ----")
+}
 
 #Write csv file of the optimal lineup
 write.table(solution1, "mydata.txt", sep="\t")
